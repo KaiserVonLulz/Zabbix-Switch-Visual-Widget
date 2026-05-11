@@ -3,6 +3,8 @@
 $ports            = $data['ports']            ?? [];
 $fields           = $data['fields']           ?? [];
 $global_sparkline = (string) ($data['global_sparkline'] ?? '');
+$global_peak_rx   = (string) ($data['global_peak_rx']   ?? '');
+$global_peak_tx   = (string) ($data['global_peak_tx']   ?? '');
 $hostid       = (string) ($data['hostid'] ?? '');
 // Stable per-instance class — prevents dynamic CSS rules (zoom, chassis color, bg) from bleeding across widgets
 $widget_uid   = 'swi' . substr(md5($hostid !== '' ? $hostid : serialize($fields)), 0, 7);
@@ -470,8 +472,10 @@ if ($error !== null) {
         $spk_bar = (new CDiv())->addClass('sw-gspk');
         $spk_bar->setAttribute('style', 'background-image:url("' . $global_sparkline . '")');
         $legend = (new CDiv())->addClass('sw-gspk-legend');
-        $legend->addItem((new CTag('span', true))->setAttribute('style', 'color:#27c060')->addItem('RX'));
-        $legend->addItem((new CTag('span', true))->setAttribute('style', 'color:#4499ff')->addItem('TX'));
+        $rx_lbl = 'RX' . ($global_peak_rx !== '' ? ' ' . $global_peak_rx : '');
+        $tx_lbl = 'TX' . ($global_peak_tx !== '' ? ' ' . $global_peak_tx : '');
+        $legend->addItem((new CTag('span', true))->setAttribute('style', 'color:#27c060')->addItem($rx_lbl));
+        $legend->addItem((new CTag('span', true))->setAttribute('style', 'color:#4499ff')->addItem($tx_lbl));
         $gspk_section = (new CDiv())->addClass('sw-gspk-wrap');
         $gspk_section->addItem($spk_bar);
         $gspk_section->addItem($legend);

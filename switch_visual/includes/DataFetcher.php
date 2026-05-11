@@ -33,6 +33,10 @@ class DataFetcher {
             }
         }
         $global_sparkline = (string) ($sparks['global'] ?? '');
+        $peak_rx_raw      = (float)  ($sparks['global_peak_rx'] ?? 0.0);
+        $peak_tx_raw      = (float)  ($sparks['global_peak_tx'] ?? 0.0);
+        $global_peak_rx   = $peak_rx_raw > 0.0 ? self::fmtBwShort($peak_rx_raw) . 'B/s' : '';
+        $global_peak_tx   = $peak_tx_raw > 0.0 ? self::fmtBwShort($peak_tx_raw) . 'B/s' : '';
 
         // Mark ports with active Zabbix triggers — force state to red
         foreach ($this->fetchTriggers() as $iface => $trig) {
@@ -49,6 +53,8 @@ class DataFetcher {
             'summary'          => $summary,
             'port_aliases'     => $port_aliases,
             'global_sparkline' => $global_sparkline,
+            'global_peak_rx'   => $global_peak_rx,
+            'global_peak_tx'   => $global_peak_tx,
         ];
     }
 
@@ -276,7 +282,12 @@ class DataFetcher {
 
         // Compute global aggregate sparkline — reuses the already-fetched history, no extra API calls
         $global = $this->computeGlobalSparkline($in_history, $out_history);
-        return ['per_port' => $sparklines, 'global' => $global];
+        return [
+            'per_port'       => $sparklines,
+            'global'         => $global['svg'],
+            'global_peak_rx' => $global['peak_rx'],
+            'global_peak_tx' => $global['peak_tx'],
+        ];
     }
 
     /**
@@ -372,7 +383,7 @@ class DataFetcher {
      * @param array<string, float[]> $in_history   itemid → ordered float values
      * @param array<string, float[]> $out_history  itemid → ordered float values
      */
-    private function computeGlobalSparkline(array $in_history, array $out_history): string {
+    private function computeGlobalSparkline(array $in_history, array $out_history): array {
         $n = 40;
         $in_totals  = array_fill(0, $n, 0.0);
         $out_totals = array_fill(0, $n, 0.0);
@@ -390,7 +401,9 @@ class DataFetcher {
             }
         }
 
-        if (max($in_totals) <= 0.0 && max($out_totals) <= 0.0) return '';
+        if (max($in_totals) <= 0.0 && max($out_totals) <= 0.0) {
+            return ['svg' => '', 'peak_rx' => 0.0, 'peak_tx' => 0.0];
+        }
         return self::sparklineGlobal($in_totals, $out_totals);
     }
 
@@ -422,7 +435,7 @@ class DataFetcher {
      * @param float[] $in_vals   aggregated RX values (40 points)
      * @param float[] $out_vals  aggregated TX values (40 points)
      */
-    private static function sparklineGlobal(array $in_vals, array $out_vals): string {
+    private static function sparklineGlobal(array $in_vals, array $out_vals): array {
         $n   = count($in_vals);
         $w   = 320; $h = 22; $pad = 2;
         $max = max(max($in_vals ?: [0.0]), max($out_vals ?: [0.0])) ?: 1.0;
@@ -445,15 +458,19 @@ class DataFetcher {
                  . '" fill="none" stroke="' . $stroke . '" stroke-width="1.5" stroke-linejoin="round"/>';
         };
 
-        // No text in the SVG — text stretches with the background-image and looks distorted
-        // on wide chassis (48-port switches). Colors (green=RX, blue=TX) identify the series.
+        // No text in the SVG — text stretches with background-image on wide chassis.
+        // Peak labels are rendered as HTML elements in the view instead.
         $svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ' . $w . ' ' . $h . '" preserveAspectRatio="none">'
              . '<rect x="0" y="0" width="' . $w . '" height="' . $h . '" fill="#0a0e14" rx="3"/>'
              . $make_area($in_vals,  '#27c060', 'rgba(39,192,96,0.22)')
              . $make_area($out_vals, '#4499ff', 'rgba(68,153,255,0.18)')
              . '</svg>';
 
-        return 'data:image/svg+xml;base64,' . base64_encode($svg);
+        return [
+            'svg'     => 'data:image/svg+xml;base64,' . base64_encode($svg),
+            'peak_rx' => count($in_vals)  ? max($in_vals)  : 0.0,
+            'peak_tx' => count($out_vals) ? max($out_vals) : 0.0,
+        ];
     }
 
     /**

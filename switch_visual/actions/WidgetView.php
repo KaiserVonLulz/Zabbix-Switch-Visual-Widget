@@ -16,6 +16,8 @@ class WidgetView extends CControllerDashboardWidgetView {
             $summary          = ['ip' => '', 'uptime' => '', 'serial' => '', 'model' => '', 'cpu' => '', 'temperature' => ''];
             $port_aliases     = [];
             $global_sparkline = '';
+            $global_peak_rx   = '';
+            $global_peak_tx   = '';
             $error            = null;
 
             if ($hostid !== '') {
@@ -55,6 +57,8 @@ class WidgetView extends CControllerDashboardWidgetView {
                 $summary          = $result['summary'];
                 $port_aliases     = $result['port_aliases'];
                 $global_sparkline = (string) ($result['global_sparkline'] ?? '');
+                $global_peak_rx   = (string) ($result['global_peak_rx']   ?? '');
+                $global_peak_tx   = (string) ($result['global_peak_tx']   ?? '');
             }
 
             // Widget name: try request input first (live name), then fields, then default.
@@ -76,6 +80,8 @@ class WidgetView extends CControllerDashboardWidgetView {
                 'summary'          => $summary,
                 'port_aliases'     => $port_aliases,
                 'global_sparkline' => $global_sparkline,
+                'global_peak_rx'   => $global_peak_rx,
+                'global_peak_tx'   => $global_peak_tx,
                 'fields'           => $f,
                 'user'             => ['debug_mode' => $this->getDebugMode()],
             ]));
@@ -90,6 +96,8 @@ class WidgetView extends CControllerDashboardWidgetView {
                 'summary'          => [],
                 'port_aliases'     => [],
                 'global_sparkline' => '',
+                'global_peak_rx'   => '',
+                'global_peak_tx'   => '',
                 'custom_name'      => '',
                 'fields'           => [],
                 'user'             => ['debug_mode' => false],
