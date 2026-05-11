@@ -24,14 +24,15 @@ class DataFetcher {
         $port_aliases = $this->fetchAliases();
         $summary      = $this->fetchSummary();
 
-        // Attach per-port combined RX+TX sparklines (requires itemids stored by fetchPorts)
-        $sparklines = $this->fetchSparklines();
-        foreach ($sparklines as $iface => $spark_url) {
+        // Attach per-port combined RX+TX sparklines and compute global aggregate
+        $sparks = $this->fetchSparklines();
+        foreach ($sparks['per_port'] as $iface => $spark_url) {
             $pos = $this->iface_to_pos[$iface] ?? null;
             if ($pos !== null && isset($ports[$pos])) {
                 $ports[$pos]['sparkline'] = (string) $spark_url;
             }
         }
+        $global_sparkline = (string) ($sparks['global'] ?? '');
 
         // Mark ports with active Zabbix triggers — force state to red
         foreach ($this->fetchTriggers() as $iface => $trig) {
@@ -44,9 +45,10 @@ class DataFetcher {
         }
 
         return [
-            'ports'        => $ports,
-            'summary'      => $summary,
-            'port_aliases' => $port_aliases,
+            'ports'            => $ports,
+            'summary'          => $summary,
+            'port_aliases'     => $port_aliases,
+            'global_sparkline' => $global_sparkline,
         ];
     }
 
@@ -93,11 +95,42 @@ class DataFetcher {
         if ($by_iface === []) return [];
 
         ksort($by_iface, SORT_NATURAL);
-        $ifaces = array_map('strval', array_slice(array_keys($by_iface), 0, $total));
 
-        // Store iface→pos for sparkline attachment
-        foreach ($ifaces as $idx => $iface) {
-            $this->iface_to_pos[$iface] = $idx + 1;
+        $auto_detect      = (bool)(int)($this->config['auto_detect_ports'] ?? 0);
+        $port_index_start = max(1, (int) ($this->config['port_index_start'] ?? 1));
+        $ifaces           = [];
+
+        if ($port_index_start > 1) {
+            // Map by absolute SNMP index: iface 4096 with start=4096 → port 1
+            foreach (array_keys($by_iface) as $iface) {
+                $iface = (string) $iface;
+                if (!ctype_digit($iface)) continue;
+                $pos = (int) $iface - $port_index_start + 1;
+                // Auto-detect: no upper bound; manual: clamp to configured total
+                if ($pos >= 1 && ($auto_detect || $pos <= $total)) {
+                    $this->iface_to_pos[$iface] = $pos;
+                    $ifaces[] = $iface;
+                }
+            }
+        } else {
+            // Default: sequential — first N sorted ifaces map to ports 1..N
+            $ifaces = $auto_detect
+                ? array_map('strval', array_keys($by_iface))
+                : array_map('strval', array_slice(array_keys($by_iface), 0, $total));
+            foreach ($ifaces as $idx => $iface) {
+                $this->iface_to_pos[$iface] = $idx + 1;
+            }
+        }
+
+        // Auto-detect: recalculate num_ports/num_sfp/total from what was found
+        // Write back to config so fetchAliases() reads the same counts.
+        if ($auto_detect) {
+            $detected_total = count($ifaces);
+            $num_sfp        = min($num_sfp, $detected_total);
+            $num_ports      = max(0, $detected_total - $num_sfp);
+            $total          = $detected_total;
+            $this->config['num_ports'] = $num_ports;
+            $this->config['num_sfp']   = $num_sfp;
         }
 
         $keys_needed = [];
@@ -174,6 +207,7 @@ class DataFetcher {
                 'bw_out'             => $bw_out,
                 'bw_in_key'          => $by_iface[$iface]['bw_in_key'],
                 'bw_out_key'         => $out_key,
+                'in_itemid'          => $in_itemid,
                 'error_rate'         => $error_rate,
                 'last_change'        => $last_change,
                 'is_sfp'             => ($pos > $num_ports),
@@ -196,13 +230,14 @@ class DataFetcher {
     // ── Sparklines ─────────────────────────────────────────────────────────────
 
     /**
-     * Fetch 30-minute RX + TX history for all ports and return a combined SVG
+     * Fetch RX + TX history for all ports and return a combined SVG
      * sparkline per iface as a base64 data URL.
      *
      * @return array<string, string>  iface → 'data:image/svg+xml;base64,...'
      */
     private function fetchSparklines(): array {
-        $time_from  = time() - 1800;
+        $sparkline_minutes = max(5, min(360, (int) ($this->config['sparkline_minutes'] ?? 30)));
+        $time_from         = time() - ($sparkline_minutes * 60);
         $sparklines = [];   // iface → combined data URL (string)
 
         $in_history  = $this->batchHistory(array_keys($this->in_itemid_map),  $time_from);
@@ -239,7 +274,9 @@ class DataFetcher {
             }
         }
 
-        return $sparklines;
+        // Compute global aggregate sparkline — reuses the already-fetched history, no extra API calls
+        $global = $this->computeGlobalSparkline($in_history, $out_history);
+        return ['per_port' => $sparklines, 'global' => $global];
     }
 
     /**
@@ -324,6 +361,98 @@ class DataFetcher {
              . ($lbl_in  !== '' ? '<text x="' . ($panel_w - 2) . '" y="10" font-size="7" font-family="monospace" fill="#38b870" font-weight="bold" text-anchor="end">' . htmlspecialchars($lbl_in)  . '</text>' : '')
              . ($lbl_out !== '' ? '<text x="' . ($tx_ox + $panel_w - 2) . '" y="10" font-size="7" font-family="monospace" fill="#5599ff" font-weight="bold" text-anchor="end">' . htmlspecialchars($lbl_out) . '</text>' : '')
              . '</svg>';
+        return 'data:image/svg+xml;base64,' . base64_encode($svg);
+    }
+
+    /**
+     * Sum per-port history (already fetched) into 40 time-normalised bins
+     * to produce a global aggregate sparkline for the whole switch.
+     * No extra API calls — reuses $in_history / $out_history from fetchSparklines().
+     *
+     * @param array<string, float[]> $in_history   itemid → ordered float values
+     * @param array<string, float[]> $out_history  itemid → ordered float values
+     */
+    private function computeGlobalSparkline(array $in_history, array $out_history): string {
+        $n = 40;
+        $in_totals  = array_fill(0, $n, 0.0);
+        $out_totals = array_fill(0, $n, 0.0);
+
+        foreach ($in_history as $series) {
+            if (count($series) < 2) continue;
+            foreach (self::resample($series, $n) as $i => $v) {
+                $in_totals[$i] += $v;
+            }
+        }
+        foreach ($out_history as $series) {
+            if (count($series) < 2) continue;
+            foreach (self::resample($series, $n) as $i => $v) {
+                $out_totals[$i] += $v;
+            }
+        }
+
+        if (max($in_totals) <= 0.0 && max($out_totals) <= 0.0) return '';
+        return self::sparklineGlobal($in_totals, $out_totals);
+    }
+
+    /**
+     * Linear-interpolation resample of $vals to exactly $n evenly-spaced points.
+     *
+     * @param  float[] $vals  source series (≥ 1 element)
+     * @return float[]        resampled series of length $n
+     */
+    private static function resample(array $vals, int $n): array {
+        $count = count($vals);
+        if ($count === 0) return array_fill(0, $n, 0.0);
+        if ($count === 1) return array_fill(0, $n, $vals[0]);
+        $result = [];
+        for ($i = 0; $i < $n; $i++) {
+            $pos      = ($i / ($n - 1)) * ($count - 1);
+            $lo       = (int) $pos;
+            $hi       = min($lo + 1, $count - 1);
+            $frac     = $pos - $lo;
+            $result[] = $vals[$lo] * (1.0 - $frac) + $vals[$hi] * $frac;
+        }
+        return $result;
+    }
+
+    /**
+     * Generate a full-width global aggregate sparkline (RX green + TX blue overlaid)
+     * as a viewBox SVG data URL.  No fixed pixel width — CSS sets the display size.
+     *
+     * @param float[] $in_vals   aggregated RX values (40 points)
+     * @param float[] $out_vals  aggregated TX values (40 points)
+     */
+    private static function sparklineGlobal(array $in_vals, array $out_vals): string {
+        $n   = count($in_vals);
+        $w   = 320; $h = 22; $pad = 2;
+        $max = max(max($in_vals ?: [0.0]), max($out_vals ?: [0.0])) ?: 1.0;
+
+        $make_area = static function(array $vals, string $stroke, string $fill)
+                use ($n, $w, $h, $pad, $max): string {
+            if ($n < 2 || max($vals) <= 0.0) return '';
+            $area = [$pad . ',' . $h];
+            $line = [];
+            foreach ($vals as $i => $v) {
+                $x      = $pad + ($i / ($n - 1)) * ($w - 2 * $pad);
+                $y      = $h - $pad - ($v / $max) * ($h - 2 * $pad);
+                $pt     = round($x, 1) . ',' . round($y, 1);
+                $area[] = $pt;
+                $line[] = $pt;
+            }
+            $area[] = ($w - $pad) . ',' . $h;
+            return '<polygon points="' . implode(' ', $area) . '" fill="' . $fill . '"/>'
+                 . '<polyline points="' . implode(' ', $line)
+                 . '" fill="none" stroke="' . $stroke . '" stroke-width="1.5" stroke-linejoin="round"/>';
+        };
+
+        // No text in the SVG — text stretches with the background-image and looks distorted
+        // on wide chassis (48-port switches). Colors (green=RX, blue=TX) identify the series.
+        $svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ' . $w . ' ' . $h . '" preserveAspectRatio="none">'
+             . '<rect x="0" y="0" width="' . $w . '" height="' . $h . '" fill="#0a0e14" rx="3"/>'
+             . $make_area($in_vals,  '#27c060', 'rgba(39,192,96,0.22)')
+             . $make_area($out_vals, '#4499ff', 'rgba(68,153,255,0.18)')
+             . '</svg>';
+
         return 'data:image/svg+xml;base64,' . base64_encode($svg);
     }
 

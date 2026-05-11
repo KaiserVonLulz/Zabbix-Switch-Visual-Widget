@@ -4,9 +4,12 @@
     "type": "widget",
     "name": "Switch Visual Panel",
     "namespace": "SwitchVisual",
-    "version": "1.2.0",
-    "author": "Switch Monitor",
+    "version": "1.4.0",
+    "author": "Mauro Serafini",
     "description": "Visual SVG panel for switch port monitoring.",
+    "widget": {
+        "js_class": "CWidgetSwitchVisual"
+    },
     "actions": {
         "widget.switchvisual.view": {
             "class": "WidgetView"
@@ -14,5 +17,8 @@
         "widget.switchvisual.sparkline": {
             "class": "WidgetSparkline"
         }
+    },
+    "assets": {
+        "js": ["class.widget.js"]
     }
 }

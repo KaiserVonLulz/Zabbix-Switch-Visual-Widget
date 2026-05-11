@@ -3,6 +3,8 @@
 namespace Modules\SwitchVisual\Includes;
 
 use Zabbix\Widgets\CWidgetForm;
+use Zabbix\Widgets\Fields\CWidgetFieldCheckBox;
+use Zabbix\Widgets\Fields\CWidgetFieldColor;
 use Zabbix\Widgets\Fields\CWidgetFieldMultiSelectHost;
 use Zabbix\Widgets\Fields\CWidgetFieldIntegerBox;
 use Zabbix\Widgets\Fields\CWidgetFieldTextBox;
@@ -67,6 +69,31 @@ class WidgetForm extends CWidgetForm {
         );
         $this->addField(
             (new CWidgetFieldTextBox('temperature_key', _('Temperature item key (optional)')))->setDefault('')
+        );
+
+        $this->addField(
+            (new CWidgetFieldColor('chassis_color', _('Chassis color')))->setDefault('404c58')
+        );
+        $this->addField(
+            (new CWidgetFieldIntegerBox('port_index_start', _('Port index start (SNMP offset)'), 1, 999999))->setDefault(1)
+        );
+        $this->addField(
+            (new CWidgetFieldCheckBox('auto_detect_ports', _('Auto-detect port count (may include VLANs/tunnels)')))->setDefault(0)
+        );
+        $this->addField(
+            (new CWidgetFieldCheckBox('show_summary', _('Show summary bar')))->setDefault(1)
+        );
+        $this->addField(
+            (new CWidgetFieldCheckBox('show_port_numbers', _('Show port numbers')))->setDefault(1)
+        );
+        $this->addField(
+            (new CWidgetFieldCheckBox('show_port_labels', _('Show port labels / aliases')))->setDefault(1)
+        );
+        $this->addField(
+            (new CWidgetFieldCheckBox('show_sparkline', _('Show global traffic sparkline')))->setDefault(1)
+        );
+        $this->addField(
+            (new CWidgetFieldIntegerBox('sparkline_minutes', _('Sparkline window (minutes)'), 5, 360))->setDefault(30)
         );
 
         return $this;

@@ -20,5 +20,13 @@ $form->addField(new CWidgetFieldTextBoxView($data['fields']['serial_key']));
 $form->addField(new CWidgetFieldTextBoxView($data['fields']['model_key']));
 $form->addField(new CWidgetFieldTextBoxView($data['fields']['cpu_key']));
 $form->addField(new CWidgetFieldTextBoxView($data['fields']['temperature_key']));
+$form->addField(new CWidgetFieldColorView($data['fields']['chassis_color']));
+$form->addField(new CWidgetFieldIntegerBoxView($data['fields']['port_index_start']));
+$form->addField(new CWidgetFieldCheckBoxView($data['fields']['auto_detect_ports']));
+$form->addField(new CWidgetFieldCheckBoxView($data['fields']['show_summary']));
+$form->addField(new CWidgetFieldCheckBoxView($data['fields']['show_port_numbers']));
+$form->addField(new CWidgetFieldCheckBoxView($data['fields']['show_port_labels']));
+$form->addField(new CWidgetFieldCheckBoxView($data['fields']['show_sparkline']));
+$form->addField(new CWidgetFieldIntegerBoxView($data['fields']['sparkline_minutes']));
 
 $form->show();
