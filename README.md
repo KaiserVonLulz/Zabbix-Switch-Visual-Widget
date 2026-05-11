@@ -2,7 +2,7 @@
 
 A custom Zabbix dashboard widget that renders a visual network switch front panel with real-time port status, speed tiers, bandwidth sparklines, utilization bars, clickable ports, and a global traffic trend — all in a compact, dark-themed interface.
 
-![Switch Visual Panel](switch.png)
+![Switch Visual Panel](blob/switch.png)
 
 ---
 
