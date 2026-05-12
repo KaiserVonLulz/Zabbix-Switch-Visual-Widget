@@ -29,12 +29,11 @@ $sfx = static function(string $state): string {
 
 // Compact value formatter — bytes/sec from ifInOctets/ifOutOctets
 $fmt_bw = static function(float $val): string {
-    $v = abs($val);
-    if ($v >= 1e12) return round($v / 1e12, 1) . ' TB';
-    if ($v >= 1e9)  return round($v / 1e9,  1) . ' GB';
-    if ($v >= 1e6)  return round($v / 1e6,  1) . ' MB';
-    if ($v >= 1e3)  return round($v / 1e3,  1) . ' KB';
-    return max(0, (int) $v) . ' B';
+    $b = abs($val) * 8;  // bytes/sec → bits/sec
+    if ($b >= 1e9)  return round($b / 1e9, 2) . ' Gbps';
+    if ($b >= 1e6)  return round($b / 1e6, 1) . ' Mbps';
+    if ($b >= 1e3)  return round($b / 1e3, 0) . ' Kbps';
+    return max(0, (int) $b) . ' bps';
 };
 
 // Duration formatter for "down for X" display

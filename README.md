@@ -191,6 +191,10 @@ switch_visual/
 
 ## Version History
 
+### 1.4.4
+- All bandwidth values now displayed in bits/sec (Gbps / Mbps / Kbps) instead of bytes — matches network engineer conventions and avoids MB vs Mb confusion
+- Applies to: tooltip RX/TX values, per-port sparkline peak labels, global sparkline legend peak labels
+
 ### 1.4.3
 - Two new port layout toggles (both default off — existing behaviour unchanged):
   - **Invert row order**: swaps which row odd/even ports appear on (even ports top, odd ports bottom — matches Huawei and some other vendors)

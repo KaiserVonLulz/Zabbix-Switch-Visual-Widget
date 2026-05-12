@@ -35,8 +35,8 @@ class DataFetcher {
         $global_sparkline = (string) ($sparks['global'] ?? '');
         $peak_rx_raw      = (float)  ($sparks['global_peak_rx'] ?? 0.0);
         $peak_tx_raw      = (float)  ($sparks['global_peak_tx'] ?? 0.0);
-        $global_peak_rx   = $peak_rx_raw > 0.0 ? self::fmtBwShort($peak_rx_raw) . 'B/s' : '';
-        $global_peak_tx   = $peak_tx_raw > 0.0 ? self::fmtBwShort($peak_tx_raw) . 'B/s' : '';
+        $global_peak_rx   = $peak_rx_raw > 0.0 ? self::fmtBwShort($peak_rx_raw * 8) . 'bps' : '';
+        $global_peak_tx   = $peak_tx_raw > 0.0 ? self::fmtBwShort($peak_tx_raw * 8) . 'bps' : '';
 
         // Mark ports with active Zabbix triggers — force state to red
         foreach ($this->fetchTriggers() as $iface => $trig) {
@@ -355,8 +355,9 @@ class DataFetcher {
         };
 
         $tx_ox   = $panel_w + $gap;
-        $lbl_in  = count($in_vals)  >= 2 ? self::fmtBwShort(max($in_vals))  : '';
-        $lbl_out = count($out_vals) >= 2 ? self::fmtBwShort(max($out_vals)) : '';
+        // Convert bytes/sec to bits/sec for display (network engineers expect Mbps/Gbps)
+        $lbl_in  = count($in_vals)  >= 2 ? self::fmtBwShort(max($in_vals)  * 8) . 'bps' : '';
+        $lbl_out = count($out_vals) >= 2 ? self::fmtBwShort(max($out_vals) * 8) . 'bps' : '';
 
         $svg = '<svg xmlns="http://www.w3.org/2000/svg" width="' . $total_w . '" height="' . $h . '">'
              // panel backgrounds
