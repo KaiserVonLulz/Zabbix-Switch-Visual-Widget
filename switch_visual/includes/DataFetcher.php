@@ -62,6 +62,7 @@ class DataFetcher {
 
     private function fetchPorts(): array {
         $hostid    = (string) ($this->config['hostid']      ?? '');
+        $bw_bits   = (bool)   ($this->config['bw_bits']    ?? false); // true = items deliver bits/sec, not bytes/sec
         $num_ports = (int)    ($this->config['num_ports']   ?? 24);
         $num_sfp   = (int)    ($this->config['num_sfp']     ?? 2);
         $total     = $num_ports + $num_sfp;
@@ -91,7 +92,7 @@ class DataFetcher {
             $iface = self::matchWildcard($in_pat, (string) $item['key_']);
             if ($iface === null) continue;
             $by_iface[$iface] = [
-                'bw_in'      => (float) $item['lastvalue'],
+                'bw_in'      => (float) $item['lastvalue'] / ($bw_bits ? 8.0 : 1.0),
                 'bw_in_key'  => (string) $item['key_'],
                 'in_itemid'  => (string) $item['itemid'],
                 'in_vtype'   => (int)    $item['value_type'],
@@ -183,7 +184,7 @@ class DataFetcher {
             $status_raw       = $sk !== '' ? ($extra[$sk] ?? null) : null;
             $status           = ($status_raw === null) ? 'up' : (((string) $status_raw === '1') ? 'up' : 'down');
             $speed_negotiated = ($spk !== '' && isset($extra[$spk])) ? (int) $extra[$spk] : 0;
-            $bw_out           = ($out_key !== '' && isset($extra[$out_key])) ? (float) $extra[$out_key] : 0.0;
+            $bw_out           = ($out_key !== '' && isset($extra[$out_key])) ? (float) $extra[$out_key] / ($bw_bits ? 8.0 : 1.0) : 0.0;
 
             $erk_in     = (strpos($err_in_pat,  '*') !== false) ? self::sub($err_in_pat,  $iface) : '';
             $erk_out    = (strpos($err_out_pat, '*') !== false) ? self::sub($err_out_pat, $iface) : '';
@@ -248,6 +249,12 @@ class DataFetcher {
 
         $in_history  = $this->batchHistory(array_keys($this->in_itemid_map),  $time_from);
         $out_history = $this->batchHistory(array_keys($this->out_itemid_map), $time_from);
+
+        // If items deliver bits/sec, convert to bytes/sec so all display/util logic is unit-consistent
+        if ($this->config['bw_bits'] ?? false) {
+            foreach ($in_history  as &$s) { $s = array_map(fn($v) => $v / 8.0, $s); } unset($s);
+            foreach ($out_history as &$s) { $s = array_map(fn($v) => $v / 8.0, $s); } unset($s);
+        }
 
         // Union of all ifaces that have any history
         $ifaces = array_unique(array_merge(

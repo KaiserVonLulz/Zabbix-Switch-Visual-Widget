@@ -4,7 +4,7 @@
     "type": "widget",
     "name": "Switch Visual Panel",
     "namespace": "SwitchVisual",
-    "version": "1.4.4",
+    "version": "1.4.5",
     "author": "Mauro Serafini",
     "description": "Visual SVG panel for switch port monitoring.",
     "widget": {

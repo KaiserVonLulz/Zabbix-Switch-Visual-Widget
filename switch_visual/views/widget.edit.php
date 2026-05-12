@@ -5,6 +5,7 @@ $form = new CWidgetFormView($data);
 $form->addField(new CWidgetFieldMultiSelectHostView($data['fields']['hostids']));
 $form->addField(new CWidgetFieldTextBoxView($data['fields']['bw_in_pattern']));
 $form->addField(new CWidgetFieldTextBoxView($data['fields']['bw_out_pattern']));
+$form->addField(new CWidgetFieldCheckBoxView($data['fields']['bw_bits']));
 $form->addField(new CWidgetFieldTextBoxView($data['fields']['status_pattern']));
 $form->addField(new CWidgetFieldTextBoxView($data['fields']['speed_pattern']));
 $form->addField(new CWidgetFieldTextBoxView($data['fields']['err_in_pattern']));

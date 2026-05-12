@@ -96,6 +96,7 @@ Wildcard patterns (`*`) match the interface index in item keys. Adjust to match 
 |-------|---------|-------------|
 | BW In item pattern | `ifInOctets[*]` | Inbound bandwidth (bytes/sec after Zabbix delta preprocessing) |
 | BW Out item pattern | `ifOutOctets[*]` | Outbound bandwidth (bytes/sec) |
+| Bandwidth items deliver bits/sec | Off | Enable if your items return bits/sec instead of bytes/sec (e.g. `ifInOctets` with ×8 preprocessing). Divides all values by 8 at ingestion to fix utilisation and display. |
 | Status item pattern | `ifOperStatus[*]` | Operational status (`1`=up, `2`=down) |
 | Speed item pattern | `ifHighSpeed[*]` | Speed in Mbps (RFC 2863); also accepts bps values |
 | Errors In item pattern | `ifInErrors[*]` | Inbound error counter |
@@ -190,6 +191,9 @@ switch_visual/
 ---
 
 ## Version History
+
+### 1.4.5
+- New **"Bandwidth items deliver bits/sec"** checkbox (default off). Enable this when your Zabbix items already return bits/sec (e.g. `ifInOctets` with ×8 preprocessing). The widget divides all values by 8 at ingestion so utilisation, tooltip, and sparkline labels are all correct. Without this fix such setups produced >100% utilisation and 8× inflated bandwidth readings.
 
 ### 1.4.4
 - All bandwidth values now displayed in bits/sec (Gbps / Mbps / Kbps) instead of bytes — matches network engineer conventions and avoids MB vs Mb confusion

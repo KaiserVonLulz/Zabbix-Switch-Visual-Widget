@@ -23,6 +23,9 @@ class WidgetForm extends CWidgetForm {
             (new CWidgetFieldTextBox('bw_out_pattern', _('BW Out item pattern')))->setDefault('ifOutOctets[*]')
         );
         $this->addField(
+            (new CWidgetFieldCheckBox('bw_bits', _('Bandwidth items deliver bits/sec (not bytes/sec)')))->setDefault(0)
+        );
+        $this->addField(
             (new CWidgetFieldTextBox('status_pattern', _('Status item pattern')))->setDefault('ifOperStatus[*]')
         );
         $this->addField(
