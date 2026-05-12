@@ -189,6 +189,13 @@ switch_visual/
 
 ## Version History
 
+### 1.4.1
+- Fixed utilization bar calculation: speed was compared in Mbps against bytes/sec traffic, making the bar always show 0% or 100%. Now correctly normalized to bytes/sec
+- Port alias truncation: long aliases now truncate with ellipsis (`…`) at the port edge; hover the alias text to see the full name
+- Global sparkline legend now shows peak RX and TX bandwidth for the sparkline window (e.g. `RX 1.2MB/s  TX 856KB/s`)
+- Fixed undefined variable error when adding a new widget before a host is selected
+- Fixed broken HTML in sparkline legend (`<i>` self-closing tag) that caused RX/TX labels to render in wrong position
+
 ### 1.4.0
 - Auto-detect port count: reads matched item count from Zabbix; manual fields still override when needed
 - Display toggles: individually show/hide summary bar, port numbers, port labels, global sparkline

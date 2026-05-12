@@ -665,11 +665,15 @@ class DataFetcher {
     // ── State resolution ───────────────────────────────────────────────────────
 
     public static function resolveState(array $raw, array $config = []): array {
-        $speed        = (int)   ($raw['speed_negotiated'] ?? 0);
+        $speed_raw    = (int)   ($raw['speed_negotiated'] ?? 0);
+        // ifHighSpeed returns Mbps (e.g. 1000 for 1 Gbps); ifSpeed returns bps (e.g. 1_000_000_000).
+        // Normalize to bytes/sec so we can compare directly with bw_in/bw_out (bytes/sec).
+        $speed_mbps   = $speed_raw > 1_000_000 ? (int) round($speed_raw / 1_000_000) : $speed_raw;
+        $speed_Bps    = $speed_mbps * 125_000;  // 1 Mbps = 125,000 B/s
         $bw_in        = (float) ($raw['bw_in']  ?? 0.0);
         $bw_out       = (float) ($raw['bw_out'] ?? 0.0);
-        $util_pct     = ($speed > 0) ? round(($bw_in  / $speed) * 100, 2) : 0.0;
-        $util_pct_out = ($speed > 0) ? round(($bw_out / $speed) * 100, 2) : 0.0;
+        $util_pct     = ($speed_Bps > 0) ? round(($bw_in  / $speed_Bps) * 100, 2) : 0.0;
+        $util_pct_out = ($speed_Bps > 0) ? round(($bw_out / $speed_Bps) * 100, 2) : 0.0;
 
         if ($raw['status'] === 'down') {
             return array_merge($raw, ['state' => 'gray', 'util_pct' => 0.0, 'util_pct_out' => 0.0, 'warnings' => []]);

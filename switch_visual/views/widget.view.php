@@ -362,7 +362,9 @@ if ($error !== null) {
             $pw->addItem((new CDiv((string) $i))->addClass('sw-num sw-num-' . $s));
         }
         if ($show_port_lbls) {
-            $pw->addItem((new CDiv($alias))->addClass('sw-alias'));
+            $a = (new CDiv($alias))->addClass('sw-alias');
+            if ($alias !== '') $a->setAttribute('title', $alias);
+            $pw->addItem($a);
         }
         if ($port !== null && method_exists($pw, 'setHint')) {
             $pw->setHint($make_tip($i, $port, $alias), '', false);
@@ -423,7 +425,9 @@ if ($error !== null) {
                 $pw->addItem((new CDiv((string) $pos))->addClass('sw-num sw-num-' . $s));
             }
             if ($show_port_lbls) {
-                $pw->addItem((new CDiv($alias))->addClass('sw-alias'));
+                $a = (new CDiv($alias))->addClass('sw-alias');
+                if ($alias !== '') $a->setAttribute('title', $alias);
+                $pw->addItem($a);
             }
             if ($port !== null && method_exists($pw, 'setHint')) {
                 $pw->setHint($make_tip($pos, $port, $alias), '', false);
