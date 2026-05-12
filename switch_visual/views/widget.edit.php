@@ -13,6 +13,8 @@ $form->addField(new CWidgetFieldTextBoxView($data['fields']['alias_pattern']));
 $form->addField(new CWidgetFieldIntegerBoxView($data['fields']['num_ports']));
 $form->addField(new CWidgetFieldIntegerBoxView($data['fields']['num_sfp']));
 $form->addField(new CWidgetFieldIntegerBoxView($data['fields']['port_rows']));
+$form->addField(new CWidgetFieldCheckBoxView($data['fields']['port_inverted']));
+$form->addField(new CWidgetFieldCheckBoxView($data['fields']['port_sequential']));
 $form->addField(new CWidgetFieldIntegerBoxView($data['fields']['scale']));
 $form->addField(new CWidgetFieldTextBoxView($data['fields']['port_aliases_manual']));
 $form->addField(new CWidgetFieldTextBoxView($data['fields']['uptime_key']));

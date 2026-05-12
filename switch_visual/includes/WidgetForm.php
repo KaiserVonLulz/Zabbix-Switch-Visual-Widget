@@ -49,10 +49,16 @@ class WidgetForm extends CWidgetForm {
             (new CWidgetFieldIntegerBox('port_rows', _('Port rows (1 or 2)'), 1, 2))->setDefault(2)
         );
         $this->addField(
+            (new CWidgetFieldCheckBox('port_inverted', _('Invert row order (even ports top — e.g. Huawei)')))->setDefault(0)
+        );
+        $this->addField(
+            (new CWidgetFieldCheckBox('port_sequential', _('Sequential rows (first half top, second half bottom — e.g. 1–24 / 25–48)')))->setDefault(0)
+        );
+        $this->addField(
             (new CWidgetFieldIntegerBox('scale', _('Zoom (50–300%)'), 50, 300))->setDefault(100)
         );
         $this->addField(
-            (new CWidgetFieldTextBox('port_aliases_manual', _('Port aliases (e.g. 1=Uplink, 3=ESX01)')))->setDefault('')
+            (new CWidgetFieldTextBox('port_aliases_manual', _('Port aliases (e.g. 1=Uplink, 3=ESX01, 4-6=VLAN1)')))->setDefault('')
         );
 
         $this->addField(

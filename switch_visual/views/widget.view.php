@@ -16,7 +16,9 @@ $widget_name  = (string) ($data['widget_name'] ?? $data['name'] ?? 'Switch');
 $numRj           = (int)  ($fields['num_ports']        ?? 24);
 $numSfp          = (int)  ($fields['num_sfp']          ?? 2);
 $scale           = max(0.4, min(3.0, (float) ($fields['scale'] ?? 100) / 100));
-$port_rows       = max(1, min(2, (int) ($fields['port_rows']   ?? 2)));
+$port_rows       = max(1, min(2, (int) ($fields['port_rows']      ?? 2)));
+$port_inverted   = (bool)(int)($fields['port_inverted']   ?? 0);
+$port_sequential = (bool)(int)($fields['port_sequential'] ?? 0);
 $show_summary    = (bool)(int)($fields['show_summary']      ?? 1);
 $show_port_nums  = (bool)(int)($fields['show_port_numbers'] ?? 1);
 $show_port_lbls  = (bool)(int)($fields['show_port_labels']  ?? 1);
@@ -46,16 +48,30 @@ $fmt_dur = static function(int $secs): string {
     return max(1, $m) . 'm';
 };
 
-// Manual aliases override SNMP aliases — format: "1=Uplink, 3=ESX01, 5=Core"
+// Manual aliases override SNMP aliases — format: "1=Uplink, 3=ESX01, 4-6=VLAN1, 5=Core"
 $manual_raw = trim((string) ($fields['port_aliases_manual'] ?? ''));
 if ($manual_raw !== '') {
     foreach (explode(',', $manual_raw) as $pair) {
         $parts = explode('=', $pair, 2);
         if (count($parts) === 2) {
-            $pnum = (int) trim($parts[0]);
-            $lbl  = trim($parts[1]);
-            if ($pnum > 0 && $lbl !== '') {
-                $port_aliases[$pnum] = $lbl;
+            $key = trim($parts[0]);
+            $lbl = trim($parts[1]);
+            if ($lbl === '') continue;
+            if (strpos($key, '-') !== false) {
+                // Range syntax: "4-6=Label" expands to ports 4, 5, 6
+                [$from, $to] = explode('-', $key, 2);
+                $from = (int) $from;
+                $to   = (int) $to;
+                if ($from > 0 && $to >= $from) {
+                    for ($p = $from; $p <= $to; $p++) {
+                        $port_aliases[$p] = $lbl;
+                    }
+                }
+            } else {
+                $pnum = (int) $key;
+                if ($pnum > 0) {
+                    $port_aliases[$pnum] = $lbl;
+                }
             }
         }
     }
@@ -78,7 +94,7 @@ $css = <<<'CSS'
 .sw-sfp-block{display:flex;flex-direction:column;gap:4px;
     border-left:2px solid #3d4d5a;padding-left:12px;}
 .sw-row{display:flex;flex-direction:row;gap:3px;align-items:flex-start;}
-.sw-pw{display:flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer;}
+.sw-pw{display:flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer;width:32px;overflow:hidden;}
 .sw-p{width:18px;height:16px;border-radius:2px 2px 3px 3px;border:2px solid #2d3340;
     background:linear-gradient(180deg,#1c2230 0%,#0a0e16 20%,#050810 100%);
     display:flex;align-items:flex-end;justify-content:center;padding-bottom:2px;
@@ -113,7 +129,7 @@ $css = <<<'CSS'
 .sw-num{font-size:9px;font-family:monospace;font-weight:700;line-height:1;}
 .sw-num-g{color:#30c870;}.sw-num-a{color:#d09000;}.sw-num-r{color:#c03030;}.sw-num-z{color:#5a7090;}
 .sw-alias{font-size:7px;font-family:monospace;color:#c8e0f4;line-height:1;font-weight:700;
-    min-height:7px;max-width:32px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:center;}
+    min-height:7px;width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:center;}
 .sw-sum{border-top:1px solid rgba(255,255,255,.12);padding-top:6px;
     display:flex;flex-wrap:wrap;gap:0;font-family:monospace;}
 .sw-sum-k{font-size:10px;color:#6888a0;font-weight:600;}
@@ -329,6 +345,16 @@ if ($error !== null) {
         $hdr->addItem((new CDiv('IP: ' . $summary['ip']))->addClass('sw-hdr-ip'));
     }
 
+    // Row assignment: returns 0 (top) or 1 (bottom) for port index $idx out of $total.
+    // Sequential: first half → top, second half → bottom.
+    // Staggered:  odd → top, even → bottom (default Cisco style).
+    // port_inverted flips whichever rule is active.
+    $row_of = static function(int $idx, int $total) use ($port_rows, $port_inverted, $port_sequential): int {
+        if ($port_rows <= 1) return 0;
+        $in_bottom = $port_sequential ? ($idx > (int) ceil($total / 2)) : ($idx % 2 === 0);
+        return (int) ($port_inverted ? !$in_bottom : $in_bottom);
+    };
+
     // ── RJ45 rows ─────────────────────────────────────────────────────────────
     $rj_rows = [];
     for ($r = 0; $r < $port_rows; $r++) {
@@ -375,8 +401,7 @@ if ($error !== null) {
                 $pw->setAttribute('data-href', 'history.php?action=showgraph&itemids[]=' . $itemid);
             }
         }
-        // 2-row: odd ports top, even ports bottom; 1-row: all in single row
-        $rj_rows[($port_rows > 1 && $i % 2 === 0) ? 1 : 0]->addItem($pw);
+        $rj_rows[$row_of($i, $numRj)]->addItem($pw);
     }
 
     $rj_block = (new CDiv())->addClass('sw-rj-block');
@@ -438,7 +463,7 @@ if ($error !== null) {
                     $pw->setAttribute('data-href', 'history.php?action=showgraph&itemids[]=' . $itemid);
                 }
             }
-            $sfp_rows[($port_rows > 1 && $i % 2 === 0) ? 1 : 0]->addItem($pw);
+            $sfp_rows[$row_of($i, $numSfp)]->addItem($pw);
         }
 
         $sfp_block = (new CDiv())->addClass('sw-sfp-block');

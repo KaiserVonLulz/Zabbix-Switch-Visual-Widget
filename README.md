@@ -49,7 +49,7 @@ Each element below can be independently shown or hidden per widget instance:
 - **Item key patterns** — wildcard patterns for all monitored items, compatible with any SNMP MIB layout
 - **Port index offset** — for devices where SNMP indices don't start at 1 (e.g. firewalls with `ifInOctets[4096]` as port 1)
 - **Auto-detect port count** — automatically reads the number of ports from matched items; manual count fields remain available and override auto-detect when needed (useful for firewalls/devices that expose VLANs and tunnels as interfaces)
-- **Manual port aliases** — comma-separated `N=Label` overrides that take priority over SNMP aliases
+- **Manual port aliases** — comma-separated `N=Label` overrides that take priority over SNMP aliases; range syntax `N-M=Label` assigns the same label to all ports in the range
 - **Configurable sparkline window** — 5 to 360 minutes (default 30)
 - **Multi-instance safe** — all dynamic CSS rules are scoped to a per-instance class so multiple switch widgets on the same dashboard never interfere with each other
 
@@ -109,6 +109,8 @@ Wildcard patterns (`*`) match the interface index in item keys. Adjust to match 
 | RJ45 ports | 24 | Number of RJ45 ports to display (ignored when auto-detect is on) |
 | SFP ports | 2 | Number of SFP/uplink ports — always manual, even with auto-detect |
 | Port rows (1 or 2) | 2 | `1` = single row (e.g. 8-port), `2` = staggered dual row |
+| Invert row order | Off | Swaps top/bottom row assignment — even ports top, odd ports bottom (matches Huawei and similar) |
+| Sequential rows | Off | First half of ports on top row, second half on bottom (e.g. 1–24 top, 25–48 bottom) instead of odd/even split |
 | Zoom (50–300%) | 100 | Scale factor for the entire widget visual |
 
 ### Appearance
@@ -123,7 +125,7 @@ Wildcard patterns (`*`) match the interface index in item keys. Adjust to match 
 |-------|---------|-------------|
 | Auto-detect port count | Off | When enabled, counts all items matching the BW-In pattern and uses that as the port total. Turn off for devices that expose VLANs or tunnels as interfaces. |
 | Port index start | 1 | First SNMP interface index. Set to `4096` if your device's first port is `ifInOctets[4096]`. |
-| Port aliases | *(empty)* | Comma-separated overrides, e.g. `1=Uplink, 3=ESX01, 5=Core` |
+| Port aliases | *(empty)* | Comma-separated overrides, e.g. `1=Uplink, 3=ESX01, 5=Core, 10-24=Access` — range syntax assigns the same label to a span of ports |
 
 ### Device Summary Items
 
@@ -188,6 +190,16 @@ switch_visual/
 ---
 
 ## Version History
+
+### 1.4.3
+- Two new port layout toggles (both default off — existing behaviour unchanged):
+  - **Invert row order**: swaps which row odd/even ports appear on (even ports top, odd ports bottom — matches Huawei and some other vendors)
+  - **Sequential rows**: places ports 1–N/2 on the top row and N/2+1–N on the bottom row instead of the staggered odd/even split (e.g. 1–24 top, 25–48 bottom)
+  - The two toggles combine: sequential + inverted puts the second half on top
+
+### 1.4.2
+- Port alias uniform spacing: all port wrappers fixed to 32px wide so alias length never affects inter-port spacing
+- Port alias range syntax: `4-6=VLAN1` now expands to ports 4, 5 and 6 — no need to repeat the same label for consecutive ports
 
 ### 1.4.1
 - Fixed utilization bar calculation: speed was compared in Mbps against bytes/sec traffic, making the bar always show 0% or 100%. Now correctly normalized to bytes/sec
