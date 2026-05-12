@@ -193,7 +193,7 @@ switch_visual/
 ## Version History
 
 ### 1.4.5
-- New **"Bandwidth items deliver bits/sec"** checkbox (default off). Enable this when your Zabbix items already return bits/sec (e.g. `ifInOctets` with ×8 preprocessing). The widget divides all values by 8 at ingestion so utilisation, tooltip, and sparkline labels are all correct. Without this fix such setups produced >100% utilisation and 8× inflated bandwidth readings.
+- New **"Bandwidth items deliver bits/sec"** checkbox (default on). Enable this when your Zabbix items already return bits/sec (e.g. `ifInOctets` with ×8 preprocessing). The widget divides all values by 8 at ingestion so utilisation, tooltip, and sparkline labels are all correct. Without this fix such setups produced >100% utilisation and 8× inflated bandwidth readings.
 
 ### 1.4.4
 - All bandwidth values now displayed in bits/sec (Gbps / Mbps / Kbps) instead of bytes — matches network engineer conventions and avoids MB vs Mb confusion
