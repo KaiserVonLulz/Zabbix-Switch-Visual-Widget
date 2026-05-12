@@ -28,7 +28,7 @@ class WidgetView extends CControllerDashboardWidgetView {
                     'num_sfp'         => (int)    ($f['num_sfp']         ?? 2),
                     'bw_in_pattern'   => trim((string) ($f['bw_in_pattern']   ?? 'ifInOctets[*]')),
                     'bw_out_pattern'  => trim((string) ($f['bw_out_pattern']  ?? 'ifOutOctets[*]')),
-                    'bw_bits'         => (bool)(int)($f['bw_bits'] ?? 0),
+                    'bw_bits'         => (bool)(int)($f['bw_bits'] ?? 1),
                     'status_pattern'  => trim((string) ($f['status_pattern']  ?? 'ifOperStatus[*]')),
                     'speed_pattern'   => trim((string) ($f['speed_pattern']   ?? 'ifHighSpeed[*]')),
                     'alias_pattern'   => trim((string) ($f['alias_pattern']   ?? '')),

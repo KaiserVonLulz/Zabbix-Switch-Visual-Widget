@@ -62,7 +62,7 @@ class DataFetcher {
 
     private function fetchPorts(): array {
         $hostid    = (string) ($this->config['hostid']      ?? '');
-        $bw_bits   = (bool)   ($this->config['bw_bits']    ?? false); // true = items deliver bits/sec, not bytes/sec
+        $bw_bits   = (bool)   ($this->config['bw_bits']    ?? true); // true = items deliver bits/sec, not bytes/sec
         $num_ports = (int)    ($this->config['num_ports']   ?? 24);
         $num_sfp   = (int)    ($this->config['num_sfp']     ?? 2);
         $total     = $num_ports + $num_sfp;
@@ -251,7 +251,7 @@ class DataFetcher {
         $out_history = $this->batchHistory(array_keys($this->out_itemid_map), $time_from);
 
         // If items deliver bits/sec, convert to bytes/sec so all display/util logic is unit-consistent
-        if ($this->config['bw_bits'] ?? false) {
+        if ($this->config['bw_bits'] ?? true) {
             foreach ($in_history  as &$s) { $s = array_map(fn($v) => $v / 8.0, $s); } unset($s);
             foreach ($out_history as &$s) { $s = array_map(fn($v) => $v / 8.0, $s); } unset($s);
         }
