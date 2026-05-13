@@ -72,6 +72,11 @@ class DataFetcher {
         $spd_pat   = (string) ($this->config['speed_pattern']   ?? 'ifHighSpeed[*]');
         $err_in_pat  = trim((string) ($this->config['err_in_pattern']  ?? 'ifInErrors[*]'));
         $err_out_pat = trim((string) ($this->config['err_out_pattern'] ?? 'ifOutErrors[*]'));
+        $poe_pat     = trim((string) ($this->config['poe_pattern']        ?? ''));
+        $poe_pwr_pat = trim((string) ($this->config['poe_pwr_pattern']    ?? ''));
+        $duplex_pat  = trim((string) ($this->config['duplex_pattern']     ?? ''));
+        $sfp_rx_pat  = trim((string) ($this->config['sfp_rx_pwr_pattern'] ?? ''));
+        $sfp_tx_pat  = trim((string) ($this->config['sfp_tx_pwr_pattern'] ?? ''));
 
         if ($hostid === '' || strpos($in_pat, '*') === false) return [];
 
@@ -147,6 +152,11 @@ class DataFetcher {
             if (strpos($spd_pat,     '*') !== false) $keys_needed[] = self::sub($spd_pat,     $iface);
             if (strpos($err_in_pat,  '*') !== false) $keys_needed[] = self::sub($err_in_pat,  $iface);
             if (strpos($err_out_pat, '*') !== false) $keys_needed[] = self::sub($err_out_pat, $iface);
+            if ($poe_pat    !== '' && strpos($poe_pat,    '*') !== false) $keys_needed[] = self::sub($poe_pat,    $iface);
+            if ($poe_pwr_pat !== '' && strpos($poe_pwr_pat, '*') !== false) $keys_needed[] = self::sub($poe_pwr_pat, $iface);
+            if ($duplex_pat !== '' && strpos($duplex_pat, '*') !== false) $keys_needed[] = self::sub($duplex_pat, $iface);
+            if ($sfp_rx_pat !== '' && strpos($sfp_rx_pat, '*') !== false) $keys_needed[] = self::sub($sfp_rx_pat, $iface);
+            if ($sfp_tx_pat !== '' && strpos($sfp_tx_pat, '*') !== false) $keys_needed[] = self::sub($sfp_tx_pat, $iface);
         }
         $keys_needed = array_values(array_unique(array_filter($keys_needed)));
 
@@ -193,6 +203,18 @@ class DataFetcher {
             $error_rate = $err_in + $err_out;
             $last_change = $sk !== '' ? ($extra_lastchange[$sk] ?? 0) : 0;
 
+            $poe_key     = ($poe_pat    !== '' && strpos($poe_pat,    '*') !== false) ? self::sub($poe_pat,    $iface) : '';
+            $poe_pwr_key = ($poe_pwr_pat !== '' && strpos($poe_pwr_pat, '*') !== false) ? self::sub($poe_pwr_pat, $iface) : '';
+            $duplex_key  = ($duplex_pat !== '' && strpos($duplex_pat, '*') !== false) ? self::sub($duplex_pat, $iface) : '';
+            $sfprx_key   = ($sfp_rx_pat !== '' && strpos($sfp_rx_pat, '*') !== false) ? self::sub($sfp_rx_pat, $iface) : '';
+            $sfptx_key   = ($sfp_tx_pat !== '' && strpos($sfp_tx_pat, '*') !== false) ? self::sub($sfp_tx_pat, $iface) : '';
+            $poe_status  = ($poe_key    !== '' && isset($extra[$poe_key]))    ? (int)   $extra[$poe_key]    : 0;
+            // poe_power_mw: milliwatts per port (RFC 3621 pethPsePortPowerConsumption); null = item not configured
+            $poe_power_mw = ($poe_pwr_key !== '' && isset($extra[$poe_pwr_key])) ? (int) $extra[$poe_pwr_key] : null;
+            $duplex_val  = ($duplex_key !== '' && isset($extra[$duplex_key])) ? (int)   $extra[$duplex_key] : 0;
+            $sfp_rx_pwr  = ($sfprx_key  !== '' && isset($extra[$sfprx_key])) ? (float) $extra[$sfprx_key]  : null;
+            $sfp_tx_pwr  = ($sfptx_key  !== '' && isset($extra[$sfptx_key])) ? (float) $extra[$sfptx_key]  : null;
+
             // Store in/out itemids for sparkline fetching
             $in_itemid = $by_iface[$iface]['in_itemid'];
             $in_vtype  = $by_iface[$iface]['in_vtype'];
@@ -221,6 +243,11 @@ class DataFetcher {
                 'has_active_trigger' => false,
                 'trigger_desc'       => '',
                 'sparkline'          => '',
+                'poe_delivering'     => ($poe_status === 3),
+                'poe_power_mw'       => $poe_power_mw,
+                'half_duplex'        => ($duplex_val === 2),
+                'sfp_rx_pwr'         => $sfp_rx_pwr,
+                'sfp_tx_pwr'         => $sfp_tx_pwr,
             ];
             $ports[$pos] = self::resolveState($raw, $this->config);
         }
@@ -621,7 +648,7 @@ class DataFetcher {
 
     private function fetchSummary(): array {
         $hostid = (string) ($this->config['hostid'] ?? '');
-        $result = ['ip' => '', 'uptime' => '', 'serial' => '', 'model' => '', 'cpu' => '', 'temperature' => ''];
+        $result = ['ip' => '', 'uptime' => '', 'serial' => '', 'model' => '', 'cpu' => '', 'temperature' => '', 'poe_total' => '', 'poe_max' => '', 'fan_status' => '', 'fan_failed' => 0];
 
         if ($hostid === '') return $result;
 
@@ -643,7 +670,8 @@ class DataFetcher {
 
         $key_map = [];
         foreach (['uptime_key' => 'uptime', 'serial_key' => 'serial', 'model_key' => 'model',
-                  'cpu_key' => 'cpu', 'temperature_key' => 'temperature'] as $cfg => $field) {
+                  'cpu_key' => 'cpu', 'temperature_key' => 'temperature',
+                  'poe_total_key' => 'poe_total', 'poe_max_key' => 'poe_max'] as $cfg => $field) {
             $k = trim((string) ($this->config[$cfg] ?? ''));
             if ($k !== '') $key_map[$k] = $field;
         }
@@ -663,6 +691,29 @@ class DataFetcher {
                         $val = (string) $item['lastvalue'];
                         $result[$field] = ($field === 'uptime') ? self::formatUptime((float) $val) : $val;
                     }
+                }
+            } catch (\Throwable $e) {}
+        }
+
+        $fan_pat = trim((string) ($this->config['fan_pattern']  ?? ''));
+        $fan_ok  = (int)         ($this->config['fan_ok_value'] ?? 3);
+        if ($fan_pat !== '' && $hostid !== '') {
+            try {
+                $fan_items = \API::Item()->get([
+                    'output'                 => ['key_', 'lastvalue'],
+                    'hostids'                => [$hostid],
+                    'search'                 => ['key_' => $fan_pat],
+                    'searchWildcardsEnabled' => true,
+                    'webitems'               => true,
+                ]);
+                if (is_array($fan_items) && $fan_items !== []) {
+                    $fan_total = count($fan_items);
+                    $fan_good  = 0;
+                    foreach ($fan_items as $fi) {
+                        if ((int) $fi['lastvalue'] === $fan_ok) $fan_good++;
+                    }
+                    $result['fan_status'] = $fan_good . '/' . $fan_total;
+                    $result['fan_failed'] = $fan_total - $fan_good;
                 }
             } catch (\Throwable $e) {}
         }
@@ -699,7 +750,7 @@ class DataFetcher {
         } elseif ($err >= $warn && $err > 0) {
             $state = 'amber';
             $warnings[] = sprintf('Error rate %.2f%%', $err);
-        } elseif ($util_thr > 0 && $util_pct >= $util_thr) {
+        } elseif ($util_thr > 0 && ($util_pct >= $util_thr || $util_pct_out >= $util_thr)) {
             $state = 'amber';
             $warnings[] = sprintf('Utilization > %.0f%%', $util_thr);
         }
@@ -732,6 +783,7 @@ class DataFetcher {
             'bw_out_key'         => '',
             'error_rate'         => 0.0,
             'util_pct'           => 0.0,
+            'util_pct_out'       => 0.0,
             'state'              => 'gray',
             'warnings'           => [],
             'last_change'        => 0,
@@ -739,6 +791,11 @@ class DataFetcher {
             'has_active_trigger' => false,
             'trigger_desc'       => '',
             'sparkline'          => '',
+            'poe_delivering'     => false,
+            'poe_power_mw'       => null,
+            'half_duplex'        => false,
+            'sfp_rx_pwr'         => null,
+            'sfp_tx_pwr'         => null,
         ];
     }
 

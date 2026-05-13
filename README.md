@@ -82,6 +82,8 @@ Each element below can be independently shown or hidden per widget instance:
 
 ## Configuration Fields
 
+The widget configuration form is organised into collapsible sections. **Ports** is expanded by default; **PoE**, **System**, **Appearance**, and **Display** start collapsed and open on click.
+
 ### Host
 
 | Field | Description |
@@ -102,6 +104,11 @@ Wildcard patterns (`*`) match the interface index in item keys. Adjust to match 
 | Errors In item pattern | `ifInErrors[*]` | Inbound error counter |
 | Errors Out item pattern | `ifOutErrors[*]` | Outbound error counter |
 | Interface alias pattern | *(empty)* | Optional SNMP alias/description per interface |
+| PoE status pattern | *(empty)* | Wildcard pattern for per-port PoE detection status, e.g. `pethPsePortDetectionStatus[*]`. Value `3` = delivering power. |
+| PoE port power pattern | *(empty)* | Wildcard pattern for per-port PoE consumption in **milliwatts**, e.g. `pethPsePortPowerConsumption[*]`. Shown as watts in the tooltip. |
+| Duplex mode pattern | *(empty)* | Wildcard pattern for duplex status, e.g. `dot3StatsDuplexStatus[*]`. Value `2` = half-duplex (dashed border + tooltip warning). |
+| SFP optical RX power pattern | *(empty)* | Wildcard pattern returning optical RX power in dBm per SFP port |
+| SFP optical TX power pattern | *(empty)* | Wildcard pattern returning optical TX power in dBm per SFP port |
 
 ### Layout
 
@@ -139,6 +146,10 @@ Optional exact item keys (no wildcard) for the summary bar.
 | Model item key | `sysDescr.0` |
 | CPU % item key | `hrProcessorLoad.1` |
 | Temperature item key | `ciscoEnvMonTemperatureValue.1` |
+| Total PoE consumed key | `pethMainPseConsumptionPower.1` | Integer watts — shown as `PoE: X / Y W` in summary bar |
+| Max PoE capacity key | `pethMainPsePower.1` | Integer watts — shown as denominator in PoE summary |
+| Fan status pattern | *(empty)* | Wildcard pattern for fan status items, e.g. `hpicfFanState[*]` |
+| Fan OK value | 3 | Value that means a fan is healthy (3 = HP good; check your vendor MIB) |
 
 ### Display Toggles
 
@@ -154,6 +165,7 @@ Optional exact item keys (no wildcard) for the summary bar.
 | Field | Default | Description |
 |-------|---------|-------------|
 | Sparkline window (minutes) | 30 | Historical window for per-port tooltips and global sparkline (5–360 min) |
+| Utilization warning threshold (%) | 80 | Port turns amber when RX or TX utilization exceeds this percentage |
 
 ---
 
@@ -178,19 +190,30 @@ switch_visual/
 │       └── class.widget.js          # JS widget class — handles port click → history graph
 ├── actions/
 │   ├── WidgetView.php               # Main controller: resolves fields, runs DataFetcher, builds response
-│   └── WidgetSparkline.php          # AJAX endpoint: returns per-port RX/TX history series as JSON
+│   └── WidgetSparkline.php          # Legacy AJAX endpoint (registered but unused — sparklines are server-side SVG)
 ├── includes/
 │   ├── DataFetcher.php              # All Zabbix API calls: items, history, triggers, aliases, summary, sparklines
 │   └── WidgetForm.php               # Widget configuration field definitions
 └── views/
-    ├── widget.edit.php              # Configuration form view
+    ├── widget.edit.php              # Configuration form view — collapsible sections: Ports, PoE, System, Appearance, Display
     ├── widget.view.php              # Dashboard rendering (CSS + PHP CDiv tree, SVG sparklines)
-    └── widget.sparkline.php         # Sparkline AJAX response view
+    └── widget.sparkline.php         # Legacy AJAX response view (paired with WidgetSparkline.php, unused)
 ```
 
 ---
 
 ## Version History
+
+### 1.5.0
+- **Split RX/TX utilization bar** — each port now shows a 2-row bar: green (top, RX) and blue (bottom, TX) independently; read at a glance without opening the tooltip
+- **Pulse animation on red LEDs** — ports in error or with active triggers now pulse so they stand out on a busy dashboard
+- **⚡ PoE indicator per port** — when PoE status is configured and a port is actively delivering power, the port number changes to `⚡N`; a small yellow dot also appears on the port card; tooltip shows the per-port wattage if the power consumption pattern is configured
+- **Total PoE used / max capacity in summary bar** — configure `pethMainPseConsumptionPower` and `pethMainPsePower` (or vendor equivalents) to see `PoE: 120 / 370 W` at a glance
+- **Duplex mode indicator** — half-duplex ports get a dashed border; tooltip shows `Duplex: Half (!)`
+- **SFP optical power in tooltip** — configure RX/TX dBm patterns (e.g. `entOpticalRxPower[*]`) to see optical levels per SFP in the hover tooltip
+- **Fan monitoring in summary bar** — configure a fan status wildcard pattern and the OK value; shows `Fans: 2/2` (or `2/3 FAIL` if a fan is bad)
+- **Configurable utilization warning threshold** — replaces the hardcoded 80% with a widget field (default 80%)
+- **Collapsible configuration form** — widget edit dialog now groups fields into five collapsible sections (Ports, PoE, System, Appearance, Display); Ports is open by default, the rest start collapsed for a shorter initial form
 
 ### 1.4.5
 - New **"Bandwidth items deliver bits/sec"** checkbox (default off). Enable this when your Zabbix items already return bits/sec (e.g. `ifInOctets` with ×8 preprocessing). The widget divides all values by 8 at ingestion so utilisation, tooltip, and sparkline labels are all correct. Without this fix such setups produced >100% utilisation and 8× inflated bandwidth readings.

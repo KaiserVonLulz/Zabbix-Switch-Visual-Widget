@@ -41,6 +41,21 @@ class WidgetForm extends CWidgetForm {
         $this->addField(
             (new CWidgetFieldTextBox('alias_pattern', _('Interface alias pattern (optional)')))->setDefault('')
         );
+        $this->addField(
+            (new CWidgetFieldTextBox('poe_pattern', _('PoE status pattern (optional, e.g. pethPsePortDetectionStatus[*])')))->setDefault('')
+        );
+        $this->addField(
+            (new CWidgetFieldTextBox('poe_pwr_pattern', _('PoE port power pattern (optional, e.g. pethPsePortPowerConsumption[*], milliwatts)')))->setDefault('')
+        );
+        $this->addField(
+            (new CWidgetFieldTextBox('duplex_pattern', _('Duplex mode pattern (optional, e.g. dot3StatsDuplexStatus[*])')))->setDefault('')
+        );
+        $this->addField(
+            (new CWidgetFieldTextBox('sfp_rx_pwr_pattern', _('SFP optical RX power pattern (optional)')))->setDefault('')
+        );
+        $this->addField(
+            (new CWidgetFieldTextBox('sfp_tx_pwr_pattern', _('SFP optical TX power pattern (optional)')))->setDefault('')
+        );
 
         $this->addField(
             (new CWidgetFieldIntegerBox('num_ports', _('RJ45 ports'), 1, 48))->setDefault(24)
@@ -79,6 +94,18 @@ class WidgetForm extends CWidgetForm {
         $this->addField(
             (new CWidgetFieldTextBox('temperature_key', _('Temperature item key (optional)')))->setDefault('')
         );
+        $this->addField(
+            (new CWidgetFieldTextBox('poe_total_key', _('Total PoE consumed item key (optional, e.g. pethMainPseConsumptionPower.1, watts)')))->setDefault('')
+        );
+        $this->addField(
+            (new CWidgetFieldTextBox('poe_max_key', _('Max PoE capacity item key (optional, e.g. pethMainPsePower.1, watts)')))->setDefault('')
+        );
+        $this->addField(
+            (new CWidgetFieldTextBox('fan_pattern', _('Fan status pattern (optional, e.g. hpicfFanState[*])')))->setDefault('')
+        );
+        $this->addField(
+            (new CWidgetFieldIntegerBox('fan_ok_value', _('Fan OK value (3=HP good, 1=some vendors — check MIB)'), 1, 255))->setDefault(3)
+        );
 
         $this->addField(
             (new CWidgetFieldColor('chassis_color', _('Chassis color')))->setDefault('404c58')
@@ -103,6 +130,9 @@ class WidgetForm extends CWidgetForm {
         );
         $this->addField(
             (new CWidgetFieldIntegerBox('sparkline_minutes', _('Sparkline window (minutes)'), 5, 360))->setDefault(30)
+        );
+        $this->addField(
+            (new CWidgetFieldIntegerBox('util_threshold', _('Utilization warning threshold (%)'), 1, 100))->setDefault(80)
         );
 
         return $this;

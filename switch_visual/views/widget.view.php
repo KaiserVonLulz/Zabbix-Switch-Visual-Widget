@@ -110,11 +110,12 @@ $css = <<<'CSS'
 .sw-led{width:10px;height:4px;border-radius:1px;background:#1c2030;}
 .sw-led-g{background:#2ad468;box-shadow:0 0 6px rgba(39,192,96,.9),0 0 2px rgba(42,212,104,.6);}
 .sw-led-a{background:#e89000;box-shadow:0 0 6px rgba(232,144,0,.9),0 0 2px rgba(224,128,0,.6);}
-.sw-led-r{background:#e83838;box-shadow:0 0 6px rgba(232,56,56,.9),0 0 2px rgba(224,48,48,.6);}
+@keyframes sw-pulse{0%,100%{opacity:1}50%{opacity:.3}}
+.sw-led-r{background:#e83838;box-shadow:0 0 6px rgba(232,56,56,.9),0 0 2px rgba(224,48,48,.6);animation:sw-pulse 1.4s ease-in-out infinite;}
 .sw-led-z{background:#1c2030;}
 .sw-sfp{width:26px;height:19px;border-radius:2px;border:2px solid #1a406a;
     background:linear-gradient(180deg,#0c1520 0%,#060d14 100%);
-    display:flex;align-items:center;justify-content:center;
+    display:flex;align-items:center;justify-content:center;position:relative;
     box-shadow:inset 0 2px 3px rgba(0,0,0,.5),inset 0 -1px 0 rgba(255,255,255,.04);}
 .sw-sfp-g{border-color:#1f9048;background:linear-gradient(180deg,#071a0e 0%,#030e08 100%);}
 .sw-sfp-a{border-color:#a07d00;background:linear-gradient(180deg,#130e00 0%,#0a0700 100%);}
@@ -123,7 +124,7 @@ $css = <<<'CSS'
 .sw-sfp-dot{width:8px;height:8px;border-radius:50%;background:#1e3050;flex-shrink:0;}
 .sw-sfp-dot-g{background:#2ad468;box-shadow:0 0 5px rgba(39,192,96,.9);}
 .sw-sfp-dot-a{background:#e89000;box-shadow:0 0 5px rgba(232,144,0,.9);}
-.sw-sfp-dot-r{background:#e83838;box-shadow:0 0 5px rgba(232,56,56,.9);}
+.sw-sfp-dot-r{background:#e83838;box-shadow:0 0 5px rgba(232,56,56,.9);animation:sw-pulse 1.4s ease-in-out infinite;}
 .sw-sfp-dot-z{background:#1e3050;}
 .sw-num{font-size:9px;font-family:monospace;font-weight:700;line-height:1;}
 .sw-num-g{color:#30c870;}.sw-num-a{color:#d09000;}.sw-num-r{color:#c03030;}.sw-num-z{color:#5a7090;}
@@ -137,12 +138,14 @@ $css = <<<'CSS'
     text-align:center;background:rgba(255,255,255,.07);border-radius:4px;}
 .sw-err{color:#ff6060;font-weight:bold;}
 .sw-warn{color:#ffd060;font-weight:bold;}
-.sw-ub{height:2px;width:18px;background:#141c28;border-radius:1px;}
-.sw-ubf{height:2px;border-radius:1px;}
-.sw-ubf-g{background:#27c060;}.sw-ubf-a{background:#e89000;}.sw-ubf-r{background:#e83838;}.sw-ubf-z{background:#141c28;}
+.sw-ub{height:4px;width:18px;background:#141c28;border-radius:1px;overflow:hidden;display:block;}
+.sw-ubr{display:block;height:2px;background:#27c060;}
+.sw-ubt{display:block;height:2px;background:#4499ff;}
 .sw-ubw0{width:0;}.sw-ubw1{width:10%;}.sw-ubw2{width:20%;}.sw-ubw3{width:30%;}
 .sw-ubw4{width:40%;}.sw-ubw5{width:50%;}.sw-ubw6{width:60%;}.sw-ubw7{width:70%;}
 .sw-ubw8{width:80%;}.sw-ubw9{width:90%;}.sw-ubw10{width:100%;}
+.sw-poe::after{content:'';position:absolute;top:1px;right:1px;width:3px;height:3px;border-radius:50%;background:#ffcc00;box-shadow:0 0 4px rgba(255,204,0,.9);}
+.sw-hdx{border-style:dashed!important;}
 /* Speed-tier overrides — only affect green (up) ports */
 .sw-spd-100m.sw-p-g{border-color:#3a7020;background:linear-gradient(180deg,#0e2008 0%,#060c03 20%,#030601 100%);}
 .sw-spd-100m .sw-led-g{background:#7ab848;box-shadow:0 0 4px rgba(100,168,56,.7);}
@@ -252,6 +255,13 @@ $make_tip = static function(int $pos, array $port, string $alias) use ($tip_css,
             $grid_rows['Down for'] = $fmt_dur(time() - $lc);
         }
     }
+    if ($port['poe_delivering'] ?? false) {
+        $poe_mw = $port['poe_power_mw'] ?? null;
+        $grid_rows['PoE'] = ($poe_mw !== null) ? number_format($poe_mw / 1000, 1) . ' W' : 'Delivering';
+    }
+    if ($port['half_duplex']    ?? false) $grid_rows['Duplex'] = 'Half (!)';
+    if (($sfp_rxp = $port['sfp_rx_pwr'] ?? null) !== null) $grid_rows['Opt RX'] = number_format((float) $sfp_rxp, 1) . ' dBm';
+    if (($sfp_txp = $port['sfp_tx_pwr'] ?? null) !== null) $grid_rows['Opt TX'] = number_format((float) $sfp_txp, 1) . ' dBm';
 
     $grid = (new CDiv())->addClass('swt-g');
     foreach ($grid_rows as $k => $v) {
@@ -370,21 +380,25 @@ if ($error !== null) {
         $spd_cls    = '';
         if ($speed_mbps >= 10000)       $spd_cls = ' sw-spd-10g';
         elseif ($speed_mbps <= 100 && $speed_mbps > 0) $spd_cls = ' sw-spd-100m';
-        $util_pct  = max((float) ($port['util_pct'] ?? 0.0), (float) ($port['util_pct_out'] ?? 0.0));
-        $util_w    = ($state === 'gray') ? 0 : min(10, (int) round($util_pct / 10));
+        $util_rx_w   = ($state === 'gray') ? 0 : min(10, (int) round((float) ($port['util_pct']     ?? 0.0) / 10));
+        $util_tx_w   = ($state === 'gray') ? 0 : min(10, (int) round((float) ($port['util_pct_out'] ?? 0.0) / 10));
+        $poe_on      = ($port !== null && ($port['poe_delivering'] ?? false));
+        $poe_cls     = $poe_on ? ' sw-poe' : '';
+        $hdx_cls     = ($port !== null && ($port['half_duplex']    ?? false)) ? ' sw-hdx' : '';
 
-        $card = (new CDiv())->addClass('sw-p sw-p-' . $s . $spd_cls);
+        $card = (new CDiv())->addClass('sw-p sw-p-' . $s . $spd_cls . $poe_cls . $hdx_cls);
         $card->addItem((new CDiv())->addClass('sw-led sw-led-' . $s));
 
-        $util_fill = (new CDiv())->addClass('sw-ubf sw-ubf-' . $s . ' sw-ubw' . $util_w);
-        $util_bar  = (new CDiv())->addClass('sw-ub');
-        $util_bar->addItem($util_fill);
+        $util_bar = (new CDiv())->addClass('sw-ub');
+        $util_bar->addItem((new CDiv())->addClass('sw-ubr sw-ubw' . $util_rx_w));
+        $util_bar->addItem((new CDiv())->addClass('sw-ubt sw-ubw' . $util_tx_w));
 
         $pw = (new CDiv())->addClass('sw-pw');
         $pw->addItem($card);
         $pw->addItem($util_bar);
         if ($show_port_nums) {
-            $pw->addItem((new CDiv((string) $i))->addClass('sw-num sw-num-' . $s));
+            $num_text = $poe_on ? ('⚡' . $i) : (string) $i;
+            $pw->addItem((new CDiv($num_text))->addClass('sw-num sw-num-' . $s));
         }
         if ($show_port_lbls) {
             $a = (new CDiv($alias))->addClass('sw-alias');
@@ -425,8 +439,11 @@ if ($error !== null) {
             $state     = $port !== null ? ($port['state'] ?? 'gray') : 'gray';
             $s         = $sfx($state);
             $alias     = $port_aliases[$pos] ?? '';
-            $util_pct = (float) ($port['util_pct'] ?? 0.0);
-            $util_w   = ($state === 'gray') ? 0 : min(10, (int) round($util_pct / 10));
+            $util_rx_w   = ($state === 'gray') ? 0 : min(10, (int) round((float) ($port['util_pct']     ?? 0.0) / 10));
+            $util_tx_w   = ($state === 'gray') ? 0 : min(10, (int) round((float) ($port['util_pct_out'] ?? 0.0) / 10));
+            $sfp_poe_on  = ($port !== null && ($port['poe_delivering'] ?? false));
+            $sfp_poe_cls = $sfp_poe_on ? ' sw-poe' : '';
+            $sfp_hdx_cls = ($port !== null && ($port['half_duplex']    ?? false)) ? ' sw-hdx' : '';
 
             $sfp_spd_val  = (int) ($port['speed_negotiated'] ?? 0);
             $sfp_spd_mbps = $sfp_spd_val > 1000000 ? (int) round($sfp_spd_val / 1e6) : $sfp_spd_val;
@@ -435,18 +452,19 @@ if ($error !== null) {
             elseif ($sfp_spd_mbps <= 100 && $sfp_spd_mbps > 0) $sfp_spd_cls = ' sw-spd-100m';
 
             $dot  = (new CDiv())->addClass('sw-sfp-dot sw-sfp-dot-' . $s);
-            $card = (new CDiv())->addClass('sw-sfp sw-sfp-' . $s . $sfp_spd_cls);
+            $card = (new CDiv())->addClass('sw-sfp sw-sfp-' . $s . $sfp_spd_cls . $sfp_poe_cls . $sfp_hdx_cls);
             $card->addItem($dot);
 
-            $util_fill = (new CDiv())->addClass('sw-ubf sw-ubf-' . $s . ' sw-ubw' . $util_w);
-            $util_bar  = (new CDiv())->addClass('sw-ub');
-            $util_bar->addItem($util_fill);
+            $util_bar = (new CDiv())->addClass('sw-ub');
+            $util_bar->addItem((new CDiv())->addClass('sw-ubr sw-ubw' . $util_rx_w));
+            $util_bar->addItem((new CDiv())->addClass('sw-ubt sw-ubw' . $util_tx_w));
 
             $pw = (new CDiv())->addClass('sw-pw');
             $pw->addItem($card);
             $pw->addItem($util_bar);
             if ($show_port_nums) {
-                $pw->addItem((new CDiv((string) $pos))->addClass('sw-num sw-num-' . $s));
+                $sfp_num_text = $sfp_poe_on ? ('⚡' . $pos) : (string) $pos;
+                $pw->addItem((new CDiv($sfp_num_text))->addClass('sw-num sw-num-' . $s));
             }
             if ($show_port_lbls) {
                 $a = (new CDiv($alias))->addClass('sw-alias');
@@ -485,6 +503,21 @@ if ($error !== null) {
     if (!empty($summary['serial']))      $sum_rows[] = ['S/N',   $summary['serial']];
     if (!empty($summary['cpu']))         $sum_rows[] = ['CPU',   $summary['cpu'] . '%'];
     if (!empty($summary['temperature'])) $sum_rows[] = ['Temp',  $summary['temperature'] . '°C'];
+    if (!empty($summary['poe_total']) || !empty($summary['poe_max'])) {
+        $poe_val = trim($summary['poe_total'] ?? '');
+        $poe_max = trim($summary['poe_max']   ?? '');
+        if ($poe_val !== '' && $poe_max !== '') {
+            $sum_rows[] = ['PoE', $poe_val . ' / ' . $poe_max . ' W'];
+        } elseif ($poe_val !== '') {
+            $sum_rows[] = ['PoE', $poe_val . ' W'];
+        } elseif ($poe_max !== '') {
+            $sum_rows[] = ['PoE cap', $poe_max . ' W'];
+        }
+    }
+    if (!empty($summary['fan_status'])) {
+        $fan_str = $summary['fan_status'] . (($summary['fan_failed'] ?? 0) > 0 ? ' FAIL' : '');
+        $sum_rows[] = ['Fans', $fan_str];
+    }
     $sum_rows[] = ['At', date('H:i:s')];
 
     $sum = (new CDiv())->addClass('sw-sum');
