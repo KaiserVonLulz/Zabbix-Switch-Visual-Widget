@@ -504,8 +504,10 @@ if ($error !== null) {
     if (!empty($summary['cpu']))         $sum_rows[] = ['CPU',   $summary['cpu'] . '%'];
     if (!empty($summary['temperature'])) $sum_rows[] = ['Temp',  $summary['temperature'] . '°C'];
     if (!empty($summary['poe_total']) || !empty($summary['poe_max'])) {
-        $poe_val = trim($summary['poe_total'] ?? '');
-        $poe_max = trim($summary['poe_max']   ?? '');
+        $fmt_w = static fn(string $v): string =>
+            rtrim(rtrim(number_format((float) $v, 1), '0'), '.');
+        $poe_val = $fmt_w(trim($summary['poe_total'] ?? ''));
+        $poe_max = $fmt_w(trim($summary['poe_max']   ?? ''));
         if ($poe_val !== '' && $poe_max !== '') {
             $sum_rows[] = ['PoE', $poe_val . ' / ' . $poe_max . ' W'];
         } elseif ($poe_val !== '') {
