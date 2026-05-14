@@ -165,6 +165,57 @@ $css = <<<'CSS'
     line-height:1;pointer-events:none;text-shadow:0 0 4px #000;}
 CSS;
 
+// Helper: derive scoped port-color CSS from a 6-char hex + tier identifier.
+// Tiers: '' = 1 Gbps base, '100m', '10g', 'alert', 'error'.
+$port_color_css = static function(string $hex, string $tier, string $uid): string {
+    $r = hexdec(substr($hex, 0, 2));
+    $g = hexdec(substr($hex, 2, 2));
+    $b = hexdec(substr($hex, 4, 2));
+    $brd = sprintf('%02x%02x%02x', (int)($r * .65), (int)($g * .65), (int)($b * .65));
+    $bh  = sprintf('%02x%02x%02x', (int)($r * .18), (int)($g * .18), (int)($b * .18));
+    $bm  = sprintf('%02x%02x%02x', (int)($r * .08), (int)($g * .08), (int)($b * .08));
+    $bl  = sprintf('%02x%02x%02x', (int)($r * .04), (int)($g * .04), (int)($b * .04));
+    $nc  = sprintf('%02x%02x%02x', (int)($r * .70), (int)($g * .70), (int)($b * .70));
+    $u   = ".sw-outer.{$uid} ";
+    $css = '';
+    switch ($tier) {
+        case '': // 1 Gbps — override the base green classes
+            $css .= "{$u}.sw-p-g{border-color:#{$brd};background:linear-gradient(180deg,#{$bh} 0%,#{$bm} 20%,#{$bl} 100%);}";
+            $css .= "{$u}.sw-led-g{background:#{$hex};box-shadow:0 0 6px rgba({$r},{$g},{$b},.9),0 0 2px rgba({$r},{$g},{$b},.6);}";
+            $css .= "{$u}.sw-sfp-g{border-color:#{$brd};background:linear-gradient(180deg,#{$bh} 0%,#{$bm} 100%);}";
+            $css .= "{$u}.sw-sfp-dot-g{background:#{$hex};box-shadow:0 0 5px rgba({$r},{$g},{$b},.9);}";
+            $css .= "{$u}.sw-num-g{color:#{$nc};}";
+            break;
+        case '100m':
+            $css .= "{$u}.sw-spd-100m.sw-p-g{border-color:#{$brd};background:linear-gradient(180deg,#{$bh} 0%,#{$bm} 20%,#{$bl} 100%);}";
+            $css .= "{$u}.sw-spd-100m .sw-led-g{background:#{$hex};box-shadow:0 0 4px rgba({$r},{$g},{$b},.7);}";
+            $css .= "{$u}.sw-spd-100m.sw-sfp-g{border-color:#{$brd};background:linear-gradient(180deg,#{$bh} 0%,#{$bm} 100%);}";
+            $css .= "{$u}.sw-spd-100m .sw-sfp-dot-g{background:#{$hex};box-shadow:0 0 4px rgba({$r},{$g},{$b},.7);}";
+            break;
+        case '10g':
+            $css .= "{$u}.sw-spd-10g.sw-p-g{border-color:#{$brd};background:linear-gradient(180deg,#{$bh} 0%,#{$bm} 20%,#{$bl} 100%);}";
+            $css .= "{$u}.sw-spd-10g .sw-led-g{background:#{$hex};box-shadow:0 0 9px rgba({$r},{$g},{$b},1),0 0 3px rgba({$r},{$g},{$b},.7);}";
+            $css .= "{$u}.sw-spd-10g.sw-sfp-g{border-color:#{$brd};background:linear-gradient(180deg,#{$bh} 0%,#{$bm} 100%);}";
+            $css .= "{$u}.sw-spd-10g .sw-sfp-dot-g{background:#{$hex};box-shadow:0 0 9px rgba({$r},{$g},{$b},1);}";
+            break;
+        case 'alert':
+            $css .= "{$u}.sw-p-a{border-color:#{$brd};background:linear-gradient(180deg,#{$bh} 0%,#{$bm} 20%,#{$bl} 100%);}";
+            $css .= "{$u}.sw-led-a{background:#{$hex};box-shadow:0 0 6px rgba({$r},{$g},{$b},.9),0 0 2px rgba({$r},{$g},{$b},.6);}";
+            $css .= "{$u}.sw-sfp-a{border-color:#{$brd};background:linear-gradient(180deg,#{$bh} 0%,#{$bm} 100%);}";
+            $css .= "{$u}.sw-sfp-dot-a{background:#{$hex};box-shadow:0 0 5px rgba({$r},{$g},{$b},.9);}";
+            $css .= "{$u}.sw-num-a{color:#{$nc};}";
+            break;
+        case 'error':
+            $css .= "{$u}.sw-p-r{border-color:#{$brd};background:linear-gradient(180deg,#{$bh} 0%,#{$bm} 20%,#{$bl} 100%);}";
+            $css .= "{$u}.sw-led-r{background:#{$hex};box-shadow:0 0 6px rgba({$r},{$g},{$b},.9),0 0 2px rgba({$r},{$g},{$b},.6);animation:sw-pulse 1.4s ease-in-out infinite;}";
+            $css .= "{$u}.sw-sfp-r{border-color:#{$brd};background:linear-gradient(180deg,#{$bh} 0%,#{$bm} 100%);}";
+            $css .= "{$u}.sw-sfp-dot-r{background:#{$hex};box-shadow:0 0 5px rgba({$r},{$g},{$b},.9);animation:sw-pulse 1.4s ease-in-out infinite;}";
+            $css .= "{$u}.sw-num-r{color:#{$nc};}";
+            break;
+    }
+    return $css;
+};
+
 // Chassis background — custom color (stored without # by CWidgetFieldColor) or default grey gradient
 // Strip '#' for backward-compat with old text-field values that included it.
 $chassis_color = ltrim(trim((string) ($fields['chassis_color'] ?? '')), '#');
@@ -193,6 +244,20 @@ if ($chassis_color !== '' && preg_match('/^[0-9a-fA-F]{6}$/i', $chassis_color)) 
     }
 } else {
     $css .= '.sw-outer.' . $widget_uid . ' .sw-chassis{background:linear-gradient(175deg,#606b78 0%,#404c58 16%,#2c333c 100%);}';
+}
+
+// Port speed-tier and state colors — dynamic overrides scoped to this widget instance
+foreach ([
+    'color_1g'    => '',
+    'color_100m'  => '100m',
+    'color_10g'   => '10g',
+    'color_alert' => 'alert',
+    'color_error' => 'error',
+] as $field => $tier) {
+    $hex = ltrim(trim((string) ($fields[$field] ?? '')), '#');
+    if ($hex !== '' && preg_match('/^[0-9a-fA-F]{6}$/i', $hex)) {
+        $css .= $port_color_css($hex, $tier, $widget_uid);
+    }
 }
 
 // Dynamic rules scoped to this widget instance via $widget_uid — prevents bleed across multiple switch widgets

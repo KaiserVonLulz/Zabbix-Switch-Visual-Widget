@@ -111,6 +111,21 @@ class WidgetForm extends CWidgetForm {
             (new CWidgetFieldColor('chassis_color', _('Chassis color')))->setDefault('404c58')
         );
         $this->addField(
+            (new CWidgetFieldColor('color_1g', _('1 Gbps port color')))->setDefault('2ad468')
+        );
+        $this->addField(
+            (new CWidgetFieldColor('color_100m', _('100 Mbps port color')))->setDefault('c8a020')
+        );
+        $this->addField(
+            (new CWidgetFieldColor('color_10g', _('10 Gbps port color')))->setDefault('2090e0')
+        );
+        $this->addField(
+            (new CWidgetFieldColor('color_alert', _('Alert / warning port color')))->setDefault('e89000')
+        );
+        $this->addField(
+            (new CWidgetFieldColor('color_error', _('Error / down port color')))->setDefault('e83838')
+        );
+        $this->addField(
             (new CWidgetFieldIntegerBox('port_index_start', _('Port index start (SNMP offset)'), 1, 999999))->setDefault(1)
         );
         $this->addField(

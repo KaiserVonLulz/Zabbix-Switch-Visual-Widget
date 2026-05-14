@@ -55,6 +55,11 @@ $form->addFieldset(
 $form->addFieldset(
     (new CWidgetFormFieldsetCollapsibleView(_('Appearance')))
         ->addField(new CWidgetFieldColorView($data['fields']['chassis_color']))
+        ->addField(new CWidgetFieldColorView($data['fields']['color_1g']))
+        ->addField(new CWidgetFieldColorView($data['fields']['color_100m']))
+        ->addField(new CWidgetFieldColorView($data['fields']['color_10g']))
+        ->addField(new CWidgetFieldColorView($data['fields']['color_alert']))
+        ->addField(new CWidgetFieldColorView($data['fields']['color_error']))
 );
 
 // ── DISPLAY (collapsed) ──────────────────────────────────────────────────────

@@ -126,6 +126,11 @@ Wildcard patterns (`*`) match the interface index in item keys. Adjust to match 
 | Field | Default | Description |
 |-------|---------|-------------|
 | Chassis color | `#404c58` | Click the color swatch to open a color picker. The widget generates a 3-stop gradient automatically. Text colors adapt for readability. |
+| 1 Gbps port color | `#2ad468` | LED, border, and glow color for 1 Gbps up-ports. |
+| 100 Mbps port color | `#c8a020` | LED, border, and glow color for 100 Mbps up-ports. |
+| 10 Gbps port color | `#2090e0` | LED, border, and glow color for 10 Gbps up-ports. |
+| Alert / warning port color | `#e89000` | Color for ports in warning state (high utilization or errors). |
+| Error / down port color | `#e83838` | Color for ports that are down or have active triggers. |
 
 ### Port Mapping
 
@@ -204,6 +209,9 @@ switch_visual/
 
 ## Version History
 
+### 1.5.1
+- **Configurable port colors** — five color pickers in the Appearance section let you choose LED, border, and glow colors for each speed tier (100 Mbps, 1 Gbps, 10 Gbps) and each state (Alert, Error/down). Defaults match the previous hardcoded values except 100 Mbps (now golden-yellow `#c8a020`) and 10 Gbps (now blue `#2090e0`). Colors are scoped per widget instance so multiple switch widgets on the same dashboard can have different port color schemes.
+
 ### 1.5.0
 - **Split RX/TX utilization bar** — each port now shows a 2-row bar: green (top, RX) and blue (bottom, TX) independently; read at a glance without opening the tooltip
 - **Pulse animation on red LEDs** — ports in error or with active triggers now pulse so they stand out on a busy dashboard
@@ -216,7 +224,7 @@ switch_visual/
 - **Collapsible configuration form** — widget edit dialog now groups fields into five collapsible sections (Ports, PoE, System, Appearance, Display); Ports is open by default, the rest start collapsed for a shorter initial form
 
 ### 1.4.5
-- New **"Bandwidth items deliver bits/sec"** checkbox (default on). Enable this when your Zabbix items already return bits/sec (e.g. `ifInOctets` with ×8 preprocessing). The widget divides all values by 8 at ingestion so utilisation, tooltip, and sparkline labels are all correct. Without this fix such setups produced >100% utilisation and 8× inflated bandwidth readings.
+- New **"Bandwidth items deliver bits/sec"** checkbox (default off). Enable this when your Zabbix items already return bits/sec (e.g. `ifInOctets` with ×8 preprocessing). The widget divides all values by 8 at ingestion so utilisation, tooltip, and sparkline labels are all correct. Without this fix such setups produced >100% utilisation and 8× inflated bandwidth readings.
 
 ### 1.4.4
 - All bandwidth values now displayed in bits/sec (Gbps / Mbps / Kbps) instead of bytes — matches network engineer conventions and avoids MB vs Mb confusion
